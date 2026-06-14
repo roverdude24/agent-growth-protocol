@@ -1,206 +1,173 @@
 ---
 name: agent-growth-protocol
-description: "Instrumented learning, growth, forgetting, and verification loops for Hermes agents. Uses a dedicated AGENT_GROWTH.md store plus optional cron/script automation."
-version: 0.2.0
+description: "Instrumented learning pipeline for Hermes agents: JSONL event store, generated report, Mnemosyne sync fallback, verification, compaction, and promotion routing."
+version: 0.3.0
 author: Vinh Lam
 license: MIT
-tags: [agent, growth, learning, memory, mnemosyne, automation]
+tags: [agent, growth, learning, memory, mnemosyne, automation, telemetry]
 ---
 
 # Agent Growth Protocol
 
-Make agent improvement operational, not vibes. Capture errors, verify fixes, compact stale entries, and promote proven rules.
+Turn repeated agent mistakes into verified long-term knowledge.
 
-## Core Change in v0.2
-
-Do **not** use `USER.md` or main `MEMORY.md` as the raw learning store.
-
-Use a dedicated file:
+This is not a persona system. This is an agent learning pipeline:
 
 ```text
-~/.hermes/memories/AGENT_GROWTH.md
+tool error / correction / workaround
+  → structured event in events.jsonl
+  → generated AGENT_GROWTH.md report
+  → verify reuse and success
+  → compact duplicates / stale entries
+  → sync verified high-value rules into long-term memory
+  → promote stable rules into skills, POLICY.md, or USER.md only when appropriate
 ```
 
-Why:
-- `USER.md` is for user preferences and has tight context budget.
-- `MEMORY.md` is working memory and should stay lean.
-- Agent learnings need lifecycle: open → verified → promoted → archived.
+## Core Files
+
+```text
+~/.hermes/memories/agent_growth/events.jsonl   # source of truth
+~/.hermes/memories/AGENT_GROWTH.md            # generated human report
+~/.hermes/scripts/agent_growth.py             # automation helper
+```
+
+Do not use `USER.md` or main `MEMORY.md` as the raw learning store.
 
 ## Automation Reality
 
-This skill has three automation levels:
+Automation levels:
 
-1. **Best-effort prompt policy** — active when skill is loaded. Agent self-triggers after tool errors, user corrections, or repeated retries.
-2. **Scripted helper** — `scripts/agent_growth.py` writes structured entries, reports patterns, compacts old entries, and exports promotion candidates.
-3. **Cron heartbeat** — daily/weekly job runs report + compaction. This is the minimum reliable automation today.
+1. **Skill policy** — best-effort. Active only when skill is loaded.
+2. **Script helper** — reliable. Appends, verifies, compacts, renders, reports, syncs.
+3. **Cron** — reliable scheduled automation. Daily report + weekly compact/sync.
+4. **Shell hooks** — future work. Use only after Hermes hook schema is verified.
 
-Shell hooks are not required for v0.2. They are future work when Hermes hook schema is wired and tested.
+Never claim full automation unless script/cron/hooks are installed and tested.
 
-## Store Schema
+## Event Types
 
-Entries live in `AGENT_GROWTH.md`.
+### Learning
 
-```markdown
-# Agent Growth Log
-
-## Open Learnings
-- [LRN-001] status=open | topic=agy | impact=medium | seen=1 | `agy` TUI input unreliable → use `agy -p` for scripted prompts
-
-## Verified Learnings
-- [LRN-002] status=verified | topic=hermes-config | impact=high | seen=3 | Root config write-protected → use `hermes config set`, not patch
-
-## Growth Events
-- [GROW-001] topic=hermes | Can now audit and patch multi-profile Hermes configs
-
-## Promotion Candidates
-- [PROMOTE] topic=hermes-config | seen=3 | Rule: use `hermes config set` for root config edits
-
-## Archived
+```bash
+python3 ~/.hermes/scripts/agent_growth.py add-learning \
+  --topic hermes-config \
+  --impact high \
+  --problem 'Root config write-protected from patch' \
+  --fix 'Use hermes config set for root config edits'
 ```
 
-## Loop 1 — Learning
+### Growth
 
-Trigger:
-- Tool error
-- User correction
-- Same failed approach retried 2+ times
-- Workaround discovered
-
-Action:
-1. Append `[LRN]` to `AGENT_GROWTH.md` with `status=open`.
-2. If similar topic exists, increment `seen` instead of adding duplicate.
-3. After successful reuse, mark `status=verified`.
-
-Format:
-
-```text
-[LRN-###] status=open | topic=<topic> | impact=<low|medium|high> | seen=<n> | <problem> → <fix>
+```bash
+python3 ~/.hermes/scripts/agent_growth.py add-growth \
+  --topic hermes \
+  --capability 'Can audit and patch multi-profile config' \
+  --evidence 'Fixed default/review-board/creative/executive profile MCP surfaces'
 ```
 
-## Loop 2 — Verification
+### Checkpoint
 
-Trigger:
-- Agent encounters same topic later
-- Agent applies previous fix
-- Task succeeds after using learning
-
-Action:
-- Change `status=open` → `status=verified`
-- Add short evidence after entry: `verified=<date>: <what succeeded>`
-
-Rule:
-- Do not promote unverified learnings.
-- Do not count anecdote as improvement until reused successfully.
-
-## Loop 3 — Forgetting / Compaction
-
-Trigger:
-- `AGENT_GROWTH.md` exceeds 80 entries
-- Weekly cron runs
-- Entries older than 30 days remain unverified
-
-Action:
-- Merge duplicate topics
-- Archive stale low-impact entries
-- Keep high-impact verified entries
-- Generate promotion candidates when `seen >= 3` and `status=verified`
-
-## Loop 4 — Growth
-
-Trigger:
-- New toolchain works
-- New workflow becomes repeatable
-- Agent completes task class it failed before
-
-Action:
-Append `[GROW]` entry.
-
-Format:
-
-```text
-[GROW-###] topic=<domain> | capability=<concrete ability> | evidence=<task/result>
+```bash
+python3 ~/.hermes/scripts/agent_growth.py checkpoint \
+  --task 'long task name' \
+  --decisions 'key decisions' \
+  --blockers 'current blockers' \
+  --next 'next action'
 ```
 
-## Loop 5 — Checkpoint
+### Verify
 
-Trigger:
-- Context > 70%
-- Long multi-step task starts
-- Before risky/bulk mutation
+```bash
+python3 ~/.hermes/scripts/agent_growth.py verify \
+  --id LRN-001 \
+  --evidence 'Applied fix successfully in later session'
+```
 
-Action:
-Append `[CHECKPOINT]` to `AGENT_GROWTH.md` or use Hermes/Mnemosyne session memory if available.
+### Report / Render / Compact / Sync
 
-Format:
+```bash
+python3 ~/.hermes/scripts/agent_growth.py report
+python3 ~/.hermes/scripts/agent_growth.py render-md
+python3 ~/.hermes/scripts/agent_growth.py compact
+python3 ~/.hermes/scripts/agent_growth.py sync-mnemosyne
+```
+
+## Mnemosyne Sync Rule
+
+Sync only high-value memories into long-term recall.
+
+Sync if:
+- learning is `status=verified`
+- confidence >= 0.8 OR impact=high
+- rule is reusable across future sessions
+
+Do not sync:
+- one-off command typos
+- transient network/API errors
+- user preferences (those belong in USER.md)
+- raw checkpoints unless needed for active task recovery
+
+Current implementation:
+- If direct Mnemosyne write API is unavailable, `sync-mnemosyne` writes a compact `## Agent Growth Sync` block into `MEMORY.md`.
+- Hermes/Mnemosyne can then ingest/recall that durable memory.
+
+Memory format:
 
 ```text
-[CHECKPOINT] task=<task> | decisions=<decisions> | blockers=<blockers> | next=<next action>
+[AGENT_LEARNING] hermes-config: Root config write-protected → use hermes config set
+[AGENT_CAPABILITY] hermes: Can audit multi-profile Hermes configs — evidence: profile audit fixed
 ```
 
 ## Promotion Rules
 
 Promote only when all true:
-- `status=verified`
-- `seen >= 3`
-- impact is `medium` or `high`
-- rule is stable and not task-specific
+- status is `verified`
+- seen >= 3
+- confidence >= 0.8
+- impact is medium/high
+- rule is stable and reusable
 
 Destination:
-- User preference → `USER.md`
-- Agent operating rule → `POLICY.md` or profile SOUL.md
-- Procedure → create/update a Hermes skill with `skill_manage`
-- Tool-specific fix → keep in `AGENT_GROWTH.md` or relevant skill Pitfalls section
 
-Never promote raw errors directly into `USER.md`.
+| Type | Destination |
+|---|---|
+| User preference | USER.md |
+| Agent operating policy | POLICY.md or SOUL.md |
+| Repeatable workflow | Hermes skill via skill_manage |
+| Tool pitfall | Relevant skill Pitfalls section |
+| One-off workaround | Stay in event store |
 
-## Mnemosyne Integration
+Do not promote unverified learnings.
 
-Mnemosyne is recall/search layer, not primary write layer for this skill.
+## Cron Recommendations
 
-Use:
-- `AGENT_GROWTH.md` = durable structured store
-- Mnemosyne/session memory = recall context and ephemeral checkpoints
-- Cron = compaction/report automation
-
-If Mnemosyne write API becomes available later, mirror verified `[LRN]` and `[GROW]` entries there.
-
-## Script Helper
-
-Install helper:
-
-```bash
-mkdir -p ~/.hermes/scripts
-cp scripts/agent_growth.py ~/.hermes/scripts/agent_growth.py
-chmod +x ~/.hermes/scripts/agent_growth.py
-```
-
-Use:
-
-```bash
-python ~/.hermes/scripts/agent_growth.py add-learning --topic agy --impact medium --text "TUI input unreliable → use agy -p"
-python ~/.hermes/scripts/agent_growth.py add-growth --topic hermes --text "Can audit multi-profile config"
-python ~/.hermes/scripts/agent_growth.py report
-python ~/.hermes/scripts/agent_growth.py compact
-```
-
-## Cron Automation
-
-Daily report:
+Daily:
 
 ```text
-Read ~/.hermes/memories/AGENT_GROWTH.md. Report open learnings, verified learnings, growth events, and promotion candidates. Keep under 10 bullets.
+Run `python3 ~/.hermes/scripts/agent_growth.py report`. Summarize open learnings, verified learnings, growth events, and promotion candidates in under 10 bullets.
 ```
 
-Weekly compaction:
+Weekly:
 
 ```text
-Run ~/.hermes/scripts/agent_growth.py compact. Then summarize promotion candidates and ask user before promoting any rule.
+Run compact → promotions → sync-mnemosyne. Ask user before editing USER.md, POLICY.md, or skills.
 ```
+
+## Agent Behavior Rules
+
+When this skill is loaded:
+
+1. After a reusable error or correction, call `add-learning`.
+2. After successfully reusing a previous fix, call `verify`.
+3. Before long work or context risk, call `checkpoint`.
+4. At end of complex work, call `add-growth` if a new repeatable capability emerged.
+5. Do not log trivial noise.
+6. Do not sync raw unverified entries into long-term memory.
 
 ## Pitfalls
 
-- Do not log every minor error. Log only reusable lessons.
-- Do not promote unverified learnings.
-- Do not put agent/tool tactics in `USER.md` unless they reflect user preference.
-- Do not claim full automation unless hooks or cron are installed and tested.
-- Do not let `AGENT_GROWTH.md` become second `MEMORY.md`; compact weekly.
+- JSONL is source of truth; markdown report is generated.
+- Use `python3`, not `python`, on macOS.
+- Keep `USER.md` for user preferences, not tool tactics.
+- Keep `MEMORY.md` lean; sync only compact verified items.
+- Shell hook integration remains future work until tested.

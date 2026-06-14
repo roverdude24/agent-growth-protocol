@@ -1,254 +1,270 @@
 # Agent Growth Protocol
 
-Instrumented learning loops for Hermes agents. This turns repeated mistakes into verified rules, tracks new capabilities, and compacts stale notes before memory turns into junk.
+**Make Hermes remember what actually matters.**
 
-v0.2 is stricter than v0.1:
+Agent Growth Protocol turns repeated mistakes into verified rules, tracks new capabilities, and syncs high-value learnings back into Hermes long-term memory without polluting `USER.md` or the main `MEMORY.md`.
 
-- No raw learnings in `USER.md`
-- No bloating main `MEMORY.md`
-- No pretending prompt instructions are full automation
-- Dedicated store: `~/.hermes/memories/AGENT_GROWTH.md`
-- Helper script: `agent_growth.py`
-- Adds missing loops: verification + forgetting/compaction
+> VN: Biến lỗi lặp lại thành bài học đã kiểm chứng. Giữ bộ nhớ Hermes sạch, có cấu trúc, và hữu ích lâu dài.
 
-## How It Works
+---
+
+## Why this exists
+
+Most agent memory becomes messy:
+
+- one-off tool errors
+- duplicated fixes
+- stale checkpoints
+- random notes mixed with user preferences
+
+This repo gives Hermes a simple learning pipeline:
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                    AGENT GROWTH SYSTEM                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1. WORK HAPPENS                                             │
-│     tool error | user correction | workaround | new workflow │
-│                          │                                  │
-│                          ▼                                  │
-│  2. CAPTURE                                                  │
-│     agent or script appends structured entry                 │
-│                          │                                  │
-│                          ▼                                  │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │ ~/.hermes/memories/AGENT_GROWTH.md                  │    │
-│  │                                                     │    │
-│  │ Open Learnings      [LRN] status=open               │    │
-│  │ Verified Learnings  [LRN] status=verified           │    │
-│  │ Growth Events       [GROW]                          │    │
-│  │ Checkpoints         [CHECKPOINT]                    │    │
-│  │ Promotion Candidates [PROMOTE]                      │    │
-│  │ Archived            stale / low-impact entries       │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                          │                                  │
-│                          ▼                                  │
-│  3. VERIFY                                                  │
-│     did this learning help next time?                        │
-│                          │                                  │
-│                          ▼                                  │
-│  4. COMPACT / PROMOTE                                       │
-│     seen >= 3 + verified + medium/high impact                │
-│                          │                                  │
-│                          ▼                                  │
-│  skills / POLICY.md / USER.md / archived                     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+error / correction / new workflow
+        ↓
+events.jsonl               # source of truth
+        ↓
+AGENT_GROWTH.md            # human-readable report
+        ↓
+verify + compact + promote
+        ↓
+Mnemosyne / MEMORY.md sync # long-term recall
 ```
 
-## Automation Levels
+VN: Không ghi mọi thứ vào long-term memory. Chỉ sync những bài học đã kiểm chứng, có ích cho các session sau.
 
-| Level | Mechanism | Works Today? | Use |
-|------|-----------|--------------|-----|
-| 1 | Skill prompt policy | Yes | Agent self-triggers when skill is loaded |
-| 2 | `agent_growth.py` helper | Yes | Reliable append/report/compact |
-| 3 | Cron heartbeat | Yes | Daily report + weekly compaction |
-| 4 | Hermes shell hooks | Future | Automatic tool-error interception |
+---
 
-Important: prompt policy is **best-effort**, not real instrumentation. The reliable path is script + cron.
+## Quick install
 
-## Installation
+### One-line install
 
-### 1. Clone
+```bash
+curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/install.sh | bash
+```
+
+This is the shortest path today — basically the “`hermes install agent-growth-protocol`” experience until Hermes supports direct GitHub skill install.
+
+VN: Một dòng là xong: clone repo, copy skill, cài script, tạo report.
+
+### Manual install
 
 ```bash
 git clone https://github.com/roverdude24/agent-growth-protocol.git
 cd agent-growth-protocol
+./install.sh
 ```
 
-### 2. Install Hermes skill
-
-```bash
-mkdir -p ~/.hermes/skills/autonomous-ai-agents/agent-growth-protocol
-cp SKILL.md ~/.hermes/skills/autonomous-ai-agents/agent-growth-protocol/SKILL.md
-```
-
-### 3. Install helper script
-
-```bash
-mkdir -p ~/.hermes/scripts
-cp scripts/agent_growth.py ~/.hermes/scripts/agent_growth.py
-chmod +x ~/.hermes/scripts/agent_growth.py
-```
-
-### 4. Verify
+Verify:
 
 ```bash
 hermes skills list | grep agent-growth
-python ~/.hermes/scripts/agent_growth.py report
+python3 ~/.hermes/scripts/agent_growth.py report
 ```
 
-The first report creates:
+---
+
+## Files
 
 ```text
-~/.hermes/memories/AGENT_GROWTH.md
+~/.hermes/memories/agent_growth/events.jsonl   # structured source of truth
+~/.hermes/memories/AGENT_GROWTH.md            # generated report for humans
+~/.hermes/scripts/agent_growth.py             # CLI helper
+~/.hermes/skills/autonomous-ai-agents/agent-growth-protocol/SKILL.md
 ```
 
-## Usage
+VN:
+- `events.jsonl`: dữ liệu thật để máy xử lý
+- `AGENT_GROWTH.md`: bản đọc dễ hiểu cho người
+- `agent_growth.py`: công cụ thêm/sync/compact/report
+
+---
+
+## How it works
+
+```mermaid
+flowchart TD
+    A[Tool error / User correction / New workflow] --> B[Capture event]
+    B --> C[events.jsonl]
+    C --> D[render-md]
+    D --> E[AGENT_GROWTH.md]
+    C --> F[verify]
+    F --> G{confidence >= 0.8?}
+    G -->|No| H[keep learning open]
+    G -->|Yes| I[compact + promotion candidate]
+    I --> J{destination?}
+    J --> K[Relevant skill Pitfalls]
+    J --> L[POLICY.md / SOUL.md]
+    J --> M[USER.md only if user preference]
+    J --> N[Mnemosyne sync fallback via MEMORY.md]
+```
+
+Key principle:
+
+```text
+Raw events stay local.
+Verified high-value lessons become long-term memory.
+```
+
+VN: Dữ liệu thô giữ trong event store. Chỉ bài học đã kiểm chứng mới được sync vào long-term memory.
+
+---
+
+## Commands
 
 ### Add a learning
 
 ```bash
-python ~/.hermes/scripts/agent_growth.py add-learning \
+python3 ~/.hermes/scripts/agent_growth.py add-learning \
   --topic hermes-config \
   --impact high \
-  --text 'Root config write-protected → use hermes config set, not patch'
+  --problem 'Root config is protected from patch/write_file' \
+  --fix 'Use hermes config set for root config edits'
 ```
 
 ### Add a growth event
 
 ```bash
-python ~/.hermes/scripts/agent_growth.py add-growth \
+python3 ~/.hermes/scripts/agent_growth.py add-growth \
   --topic hermes \
-  --text 'Can audit and patch multi-profile Hermes configs'
+  --capability 'Can audit and patch multi-profile Hermes configs' \
+  --evidence 'Fixed default, review-board, creative-production, executive-ops profiles'
 ```
 
-### Add a checkpoint
+### Checkpoint long work
 
 ```bash
-python ~/.hermes/scripts/agent_growth.py checkpoint \
-  --task 'agent-growth-protocol v0.2' \
-  --decisions 'Use dedicated AGENT_GROWTH.md store' \
-  --blockers 'Shell hooks not wired yet' \
-  --next 'Add cron job for weekly compaction'
+python3 ~/.hermes/scripts/agent_growth.py checkpoint \
+  --task 'Mirror MV prompt system' \
+  --decisions 'Use two-track Character/Vehicle workflow' \
+  --blockers 'Need final source footage' \
+  --next 'Generate prompt packets'
 ```
 
-### Report
+### Verify a learning
 
 ```bash
-python ~/.hermes/scripts/agent_growth.py report
+python3 ~/.hermes/scripts/agent_growth.py verify \
+  --id LRN-001 \
+  --evidence 'Applied successfully in next Hermes config edit'
 ```
 
-### Compact
+### Sync verified lessons into Hermes long-term memory
 
 ```bash
-python ~/.hermes/scripts/agent_growth.py compact
+python3 ~/.hermes/scripts/agent_growth.py sync-mnemosyne
 ```
 
-## Store Schema
+Current sync behavior:
 
-```markdown
-# Agent Growth Log
+- Direct Mnemosyne write tool is not available in this environment.
+- The script writes a compact `## Agent Growth Sync` block into `~/.hermes/memories/MEMORY.md`.
+- Hermes/Mnemosyne can then recall those high-value rules later.
 
-## Open Learnings
-- [LRN-001] status=open | date=2026-06-14 | topic=agy | impact=medium | seen=1 | `agy` TUI input unreliable → use `agy -p`
+### Report / compact / render
 
-## Verified Learnings
-- [LRN-002] status=verified | date=2026-06-14 | topic=hermes-config | impact=high | seen=3 | Root config write-protected → use `hermes config set`
-
-## Growth Events
-- [GROW-001] date=2026-06-14 | topic=hermes | Can now audit and patch multi-profile configs
-
-## Promotion Candidates
-- [PROMOTE] topic=hermes-config | seen=3 | Rule: use `hermes config set` for root config edits
-
-## Checkpoints
-- [CHECKPOINT] date=2026-06-14T18:20 | task=repo update | decisions=v0.2 store | blockers=none | next=push
-
-## Archived
+```bash
+python3 ~/.hermes/scripts/agent_growth.py report
+python3 ~/.hermes/scripts/agent_growth.py compact
+python3 ~/.hermes/scripts/agent_growth.py render-md
+python3 ~/.hermes/scripts/agent_growth.py promotions
 ```
 
-## Promotion Rules
+---
+
+## What gets synced to long-term memory?
+
+Sync only if:
+
+- learning is verified
+- confidence >= 0.8 OR impact is high
+- lesson is reusable across future sessions
+- not just a one-off typo or transient API issue
+
+Good sync:
+
+```text
+[AGENT_LEARNING] hermes-config: Root config is protected from patch/write_file → use hermes config set
+```
+
+Bad sync:
+
+```text
+[AGENT_LEARNING] I typed the wrong path once
+```
+
+VN: Sync ít nhưng chất. Đừng biến long-term memory thành thùng rác.
+
+---
+
+## Promotion rules
 
 Promote only when all are true:
 
 - `status=verified`
 - `seen >= 3`
+- `confidence >= 0.8`
 - impact is `medium` or `high`
-- rule is stable, reusable, and not task-specific
+- rule is stable and reusable
 
-Destination:
+Destination guide:
 
-| Type | Destination |
-|------|-------------|
+| Learning type | Destination |
+|---|---|
 | User preference | `USER.md` |
-| Agent operating rule | `POLICY.md` or profile SOUL.md |
-| Procedure | Hermes skill via `skill_manage` |
-| Tool-specific fix | Relevant skill Pitfalls section |
-| One-off workaround | Stay in `AGENT_GROWTH.md` |
+| Agent operating rule | `POLICY.md` or profile `SOUL.md` |
+| Repeatable workflow | new or existing Hermes skill |
+| Tool pitfall | relevant skill Pitfalls section |
+| One-off workaround | keep in `events.jsonl` |
 
-Do not promote raw tool errors into `USER.md`.
+VN: Không đẩy lỗi thô vào `USER.md`. Chỉ promote khi đã kiểm chứng.
 
-## Mnemosyne Integration
+---
 
-Mnemosyne is recall/search support, not primary write storage for this skill.
+## Automation levels
 
-```text
-AGENT_GROWTH.md = durable structured store
-Mnemosyne       = recall/search/session context
-Cron            = report + compaction automation
-```
+| Level | Mechanism | Status |
+|---|---|---|
+| 1 | Skill instructions | Works, best-effort |
+| 2 | `agent_growth.py` CLI | Works, reliable |
+| 3 | Cron report/compact/sync | Works if scheduled |
+| 4 | Hermes shell hooks | Future work |
 
-If Mnemosyne write APIs become available, mirror verified `[LRN]` and `[GROW]` entries there. Until then, keep durable writes in `AGENT_GROWTH.md`.
+Honest note: prompt-triggered automation depends on the agent remembering the skill. Reliable automation comes from script + cron. Full auto-capture needs Hermes hooks wired and tested.
 
-## Cron Automation
-
-### Daily report
-
-```bash
-python ~/.hermes/scripts/agent_growth.py report
-```
-
-Use this in your morning briefing prompt:
-
-```text
-Run `python ~/.hermes/scripts/agent_growth.py report`. Summarize open learnings, verified learnings, growth events, and promotion candidates in under 10 bullets.
-```
-
-### Weekly compaction
-
-```bash
-python ~/.hermes/scripts/agent_growth.py compact
-```
-
-Use this in a weekly cron prompt:
-
-```text
-Run `python ~/.hermes/scripts/agent_growth.py compact`, then report new promotion candidates. Do not edit USER.md, POLICY.md, or skills without user approval.
-```
+---
 
 ## Strengths
 
-- Dedicated learning store keeps `USER.md` and `MEMORY.md` clean
-- Structured entries are easy to grep, compact, and promote
+- Keeps `USER.md` clean
+- Keeps main `MEMORY.md` lean
+- Uses JSONL as source of truth
+- Generates readable markdown report
 - Adds verification before promotion
-- Adds forgetting/compaction loop
-- Works now with plain files + script + cron
+- Supports Mnemosyne long-term sync fallback
 
 ## Weaknesses
 
-- Prompt-based auto-trigger is best-effort
-- Script cannot intercept every tool call unless wired into hooks
-- Compaction is simple; it does not cluster semantically yet
+- No native hook capture yet
+- Compaction is rule-based, not semantic clustering
 - Promotion still needs human approval
-- Metrics are basic counts, not true error-rate reduction
+- Metrics are basic counts, not full error-rate analytics
+
+---
 
 ## Roadmap
 
-- Wire Hermes `post_tool_call` / `transform_tool_result` hooks once schema is verified
-- Add semantic clustering for duplicate learnings
-- Add `verify-learning` command
-- Add error-rate metrics before/after promotion
-- Mirror verified entries into Mnemosyne when write API exists
+- Wire Hermes `post_tool_call` / `transform_tool_result` hooks
+- Add semantic duplicate clustering
+- Add `verify-learning` with success/failure scoring
+- Add weekly cron template
+- Add direct Mnemosyne write once API/tool exists
+
+---
 
 ## Origin
 
-Adapted from [AI Persona OS](https://clawhub.ai/jeffjhunter/ai-persona-os), but narrowed for Hermes. AI Persona OS has many persona and workspace patterns. This repo keeps only the parts Hermes needed: learning, verification, growth, and compaction.
+Adapted from [AI Persona OS](https://clawhub.ai/jeffjhunter/ai-persona-os), narrowed for Hermes. This repo keeps only the operational parts: learning, verification, compaction, growth, and long-term memory sync.
 
 ## License
 
