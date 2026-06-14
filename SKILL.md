@@ -157,12 +157,79 @@ Run compact → promotions → sync-mnemosyne. Ask user before editing USER.md, 
 
 When this skill is loaded:
 
-1. After a reusable error or correction, call `add-learning`.
-2. After successfully reusing a previous fix, call `verify`.
-3. Before long work or context risk, call `checkpoint`.
+1. After a reusable error or correction, call `add-learning` via terminal.
+2. After successfully reusing a previous fix, call `verify` via terminal.
+3. Before long work or context risk, call `checkpoint` via terminal.
 4. At end of complex work, call `add-growth` if a new repeatable capability emerged.
 5. Do not log trivial noise.
 6. Do not sync raw unverified entries into long-term memory.
+7. Use `agp-` prefix for all commands to avoid collision with other skills.
+
+## Quick Commands
+
+User can trigger with one word. Agent interprets and runs script.
+
+| Command | What it does |
+|---------|-------------|
+| `/agp-learn` | Log a learning entry |
+| `/agp-grow` | Log a growth event |
+| `/agp-checkpoint` | Save checkpoint |
+| `/agp-report` | Show report |
+| `/agp-compact` | Compact stale entries |
+| `/agp-sync` | Sync to long-term memory |
+
+## Auto-Trigger Table
+
+| Event | Action | Command |
+|-------|--------|---------|
+| Tool returns error | Log learning | `add-learning` |
+| User corrects agent | Log learning | `add-learning` |
+| Agent retries same tool 2+ times | Log learning | `add-learning` |
+| Workaround discovered | Log learning | `add-learning` |
+| Agent completes new workflow | Log growth | `add-growth` |
+| Context > 70% or long task starts | Checkpoint | `checkpoint` |
+| Learning reused successfully | Verify | `verify` |
+
+## Command Templates
+
+```bash
+# After tool error
+python3 ~/.hermes/scripts/agent_growth.py add-learning \
+  --topic "<topic>" \
+  --impact "<low|medium|high>" \
+  --problem "<what went wrong>" \
+  --fix "<what fixed it>"
+
+# After new capability
+python3 ~/.hermes/scripts/agent_growth.py add-growth \
+  --topic "<domain>" \
+  --capability "<what agent can now do>" \
+  --evidence "<proof>"
+
+# Before long task
+python3 ~/.hermes/scripts/agent_growth.py checkpoint \
+  --task "<task name>" \
+  --decisions "<key decisions>" \
+  --blockers "<blockers>" \
+  --next "<next action>"
+
+# After reusing a fix
+python3 ~/.hermes/scripts/agent_growth.py verify \
+  --id "<LRN-NNN>" \
+  --evidence "<proof it worked>"
+```
+
+## Topic Naming Convention
+
+Use prefix to avoid collision with other systems:
+
+```
+hermes-config:<subtopic>    — Hermes configuration issues
+tool:<tool-name>            — tool-specific failures
+workflow:<name>             — workflow learnings
+user:<preference>           — user preference learnings
+project:<project-name>      — project-specific learnings
+```
 
 ## Pitfalls
 
@@ -171,3 +238,8 @@ When this skill is loaded:
 - Keep `USER.md` for user preferences, not tool tactics.
 - Keep `MEMORY.md` lean; sync only compact verified items.
 - Shell hook integration remains future work until tested.
+- Public README must avoid local `file://` links and avoid claiming fake automation.
+
+## References
+
+- `references/v0.3-design-notes.md` — session-specific design notes for JSONL source-of-truth, Mnemosyne sync fallback, one-line install, and GitHub README presentation.
