@@ -1,7 +1,7 @@
 ---
 name: agent-growth-protocol
 description: "Instrumented learning pipeline for Hermes agents: JSONL event store, generated report, Mnemosyne sync fallback, verification, compaction, and promotion routing."
-version: 0.3.0
+version: 0.3.1
 author: Vinh Lam
 license: MIT
 tags: [agent, growth, learning, memory, mnemosyne, automation, telemetry]
@@ -239,7 +239,11 @@ project:<project-name>      — project-specific learnings
 - Keep `MEMORY.md` lean; sync only compact verified items.
 - Shell hook integration remains future work until tested.
 - Public README must avoid local `file://` links and avoid claiming fake automation.
+- `mnemosyne_remember` tool does not exist in Hermes. Use `mnemosyne_dashboard_*` for status only. Write via `agent_growth.py` or direct file edits.
+- When using `install.sh`, always push repo changes FIRST before running the script — remote clone may pull old version.
+- For creative writing (README, captions), use two-pass pipeline: agy drafts → GPT-5.5 reviews/rewrites → parent polishes. agy is strong at structure, GPT-5.5 at copy quality.
 
 ## References
 
 - `references/v0.3-design-notes.md` — session-specific design notes for JSONL source-of-truth, Mnemosyne sync fallback, one-line install, and GitHub README presentation.
+- `references/review-pipeline.md` — two-pass agy→GPT-5.5 review pipeline for README/caption writing.
