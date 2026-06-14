@@ -1,272 +1,114 @@
-# Agent Growth Protocol v0.3.1
+# Agent Growth Protocol (AGP)
 
-**Make Hermes remember what actually matters.**
-**Biến lỗi lặp lại thành bài học hữu ích — sạch, có cấu trúc, và dùng lại được.**
+**Turn repeated agent mistakes into verified rules. Works with or without Hermes.**
 
----
-
-## What it does
-
-Most AI agents forget everything between sessions. They repeat the same mistakes, burn credits fixing solved problems, and never improve.
-
-AGP captures tool errors, user corrections, and useful workflows. It stores them in a structured log, verifies what is worth keeping, and promotes only high-value learnings into long-term memory.
-
-**Result:** fewer repeated mistakes, better recall, cleaner memory.
-
-> VN: Agent hay quên between sessions. AGP ghi lại lỗi, cách fix, và workflow hay. Chỉ bài học đã kiểm chứng mới được đẩy vào long-term memory.
+> Biến lỗi lặp lại thành bài học đã kiểm chứng. Dùng được với mọi agent.
 
 ---
 
-## Who this is for
+## Two paths
 
-- Hermes users who want better agent memory behavior
-- AI developers building agent workflows
-- Teams that want structured learning from repeated tool errors
+| Path | For | What it ships |
+|------|-----|--------------|
+| **[Standalone](standalone/)** | Any agent (Codex, Antigravity, OpenCode, etc.) | SQLite database + CLI helper + SKILL.md |
+| **[Hermes-native](hermes/)** | Hermes Agent only | Thin policy SKILL.md (~500 tokens), uses Hermes built-ins |
 
-> VN: Dành cho người dùng Hermes muốn agent nhớ đúng thứ cần nhớ, và dev AI muốn agent tự học từ lỗi.
+**Not sure?** Start with Standalone — it works everywhere.
+
+> VN: Bắt đầu với Standalone nếu chưa chắc — dùng được với mọi agent.
 
 ---
 
-## Quick install
+## Standalone (v0.3.2)
+
+For agents without built-in memory. Includes its own SQLite memory system.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/standalone/install.sh | bash
 ```
 
-This clones the repo, copies the skill to Hermes, installs the helper script, and generates your first report.
+What you get:
+- SQLite database: `~/.agent_growth/growth.db`
+- Human-readable report: `~/.agent_growth/report.md`
+- CLI helper: `~/.agent_growth/bin/agent_growth.py`
+- Session-aware recall: `session-start` prints relevant prior learnings
 
-> VN: Một dòng là xong — clone repo, cài skill, cài script, tạo report.
-
-### What gets installed
-
-```text
-~/.hermes/memories/agent_growth/events.jsonl    ← structured event database
-~/.hermes/memories/AGENT_GROWTH.md             ← human-readable report
-~/.hermes/scripts/agent_growth.py              ← CLI helper
-~/.hermes/skills/.../agent-growth-protocol/SKILL.md  ← agent instructions
-```
-
-### Verify
-
+Commands:
 ```bash
-python3 ~/.hermes/scripts/agent_growth.py report
+agent_growth.py add-learning --topic tool:x --problem "..." --fix "..."
+agent_growth.py add-growth --topic workflow:y --capability "..." --evidence "..."
+agent_growth.py verify --id LRN-001 --evidence "..."
+agent_growth.py session-start    # prints relevant learnings for new session
+agent_growth.py recall --topic tool
+agent_growth.py report
 ```
 
-You should see event counts and a clean summary.
+> VN: SQLite database chạy local, nhanh, không phụ thuộc external service.
+
+Details: [standalone/](standalone/)
 
 ---
 
-## Quick commands
+## Hermes-native (v0.4)
 
-### Slash commands (one word)
-
-| Command | What it does |
-|---|---|
-| `/agp-learn` | Record a learning event |
-| `/agp-grow` | Record a new capability |
-| `/agp-checkpoint` | Save current task state |
-| `/agp-report` | Show stats and status |
-| `/agp-compact` | Clean stale entries |
-| `/agp-sync` | Push verified rules to long-term memory |
-
-### CLI commands (copy-paste)
+For Hermes Agent. No standalone infrastructure — uses Hermes hooks, memory, and cron.
 
 ```bash
-# Log a learning
-python3 ~/.hermes/scripts/agent_growth.py add-learning \
-  --topic "tool:write_file" \
-  --impact high \
-  --problem "Root config is protected from patch" \
-  --fix "Use hermes config set for root config edits"
-
-# Log a growth event
-python3 ~/.hermes/scripts/agent_growth.py add-growth \
-  --topic "workflow:config-patch" \
-  --capability "Can audit and patch multi-profile Hermes configs" \
-  --evidence "Fixed default, review-board, creative, executive profiles"
-
-# Save checkpoint
-python3 ~/.hermes/scripts/agent_growth.py checkpoint \
-  --task "Mirror MV prompt system" \
-  --decisions "Two-track Character/Vehicle workflow" \
-  --blockers "Need source footage" \
-  --next "Generate prompt packets"
-
-# Verify a learning
-python3 ~/.hermes/scripts/agent_growth.py verify --id LRN-001 \
-  --evidence "Applied successfully in next session"
-
-# Report
-python3 ~/.hermes/scripts/agent_growth.py report
-
-# Compact stale entries
-python3 ~/.hermes/scripts/agent_growth.py compact
-
-# Sync verified rules to long-term memory
-python3 ~/.hermes/scripts/agent_growth.py sync-mnemosyne
+curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/install-hermes.sh | bash
 ```
 
-> VN: Gõ `/agp-learn` trong chat hoặc chạy CLI thủ công. Agent tự đọc skill để gọi script khi có lỗi.
+What you get:
+- Thin policy SKILL.md (~500 tokens)
+- Uses Hermes hooks for auto-capture
+- Uses Hermes memory for storage
+- Uses Hermes cron for reporting
+- No scripts, no databases
+
+Details: [hermes/](hermes/)
+
+---
+
+## Which should I choose?
+
+| | Standalone | Hermes-native |
+|---|---|---|
+| **Agent** | Any | Hermes only |
+| **Memory** | SQLite (own database) | Hermes built-in |
+| **Setup** | Python 3 + script | Just SKILL.md |
+| **Auto-capture** | CLI + cron | Hooks + cron |
+| **Best for** | Multi-agent setups | Hermes-only setups |
+
+**Choose Standalone** if you use multiple agents or want portable memory.
+**Choose Hermes-native** if you're all-in on Hermes and want zero extra infra.
+
+> VN: Standalone = mọi agent, SQLite riêng. Hermes-native = chỉ Hermes, dùng sẵn memory.
 
 ---
 
 ## How it works
 
-```mermaid
-flowchart TD
-    A[Error / Correction / New workflow] --> B[Log to events.jsonl]
-    B --> C[Verify: did this fix work?]
-    C --> D{Worth keeping?}
-    D -->|No| E[Keep local]
-    D -->|Yes| F[Promote to long-term memory]
-    F --> G[MEMORY.md sync]
+```
+Error / Correction / New workflow
+        ↓
+    Capture lesson
+        ↓
+    Verify: did this fix work?
+        ↓
+    Worth keeping?
+        ├── No  → keep local
+        └── Yes → promote to long-term memory
 ```
 
-**Rule:** only verified, reusable, high-value learnings enter long-term memory. Raw errors stay local.
-
-> VN: Dữ liệu thô giữ trong event store. Chỉ bài học đã kiểm chứng mới được sync vào long-term memory.
-
----
-
-## Auto-capture rules
-
-When the AGP skill is loaded, the agent self-triggers on these events:
-
-| Event | Agent does |
-|---|---|
-| Tool returns error | Logs a learning |
-| User corrects the agent | Logs a learning |
-| Agent retries same tool 2+ times | Logs a learning |
-| Workaround discovered | Logs a learning |
-| New workflow completed | Logs a growth event |
-| Context > 70% | Creates a checkpoint |
-| Learning reused successfully | Marks it verified |
-
-> VN: Agent tự gọi script khi có sự kiện. User không cần gõ gì cả.
-
----
-
-## Topic naming convention
-
-Prefix topics to keep the database clean:
-
-| Prefix | Use for |
-|---|---|
-| `hermes-config:` | Configuration errors |
-| `tool:` | Tool-specific failures |
-| `workflow:` | Multi-step procedures |
-| `project:` | Project-specific learnings |
-
----
-
-## What gets promoted
-
-AGP promotes only when ALL true:
-
-- `status=verified` (confirmed working)
-- `seen >= 3` (repeatedly useful)
-- `confidence >= 0.8` (high confidence)
-- `impact = medium or high`
-
-| Learning type | Destination |
-|---|---|
-| User preference | `USER.md` |
-| Operating rule | `POLICY.md` or `SOUL.md` |
-| Repeatable workflow | Hermes skill |
-| Tool pitfall | Skill Pitfalls section |
-| One-off workaround | Stays in event store |
-
-> VN: Không đẩy lỗi thô vào config. Chỉ promote khi đã kiểm chứng.
-
----
-
-## Automation levels
-
-| Level | How | Status |
-|---|---|---|
-| 1 | Agent reads skill, self-triggers | Active (best-effort) |
-| 2 | CLI helper script | Active & reliable |
-| 3 | Cron job for daily report/compact | Active (if configured) |
-| 4 | Native shell hooks | Future work |
-
-> VN: Level 1-3 hoạt động ngay. Level 4 là tương lai.
-
----
-
-## Strengths
-
-- Keeps `USER.md` clean for user preferences only
-- Keeps `MEMORY.md` lean and high-signal
-- Structured JSONL log for easy search and analysis
-- Verified-only promotion prevents memory pollution
-- One-line install, zero setup
-
-## Weaknesses
-
-- No native shell hooks yet (auto-capture is prompt-dependent)
-- Compaction is rule-based, not semantic
-- Promotion needs human approval
-- Some sections still assume Hermes familiarity
-
----
-
-## Compatibility
-
-- Hermes Agent (any version with skill support)
-- macOS / Linux shell
-- Python 3 installed
-- Git + curl available
-
----
-
-## Troubleshooting
-
-**Install fails:**
-1. Check Python 3: `python3 --version`
-2. Check Hermes: `hermes --version`
-3. Check `~/.hermes/` exists
-4. Run install manually: `cd /path/to/repo && ./install.sh`
-5. Check report: `python3 ~/.hermes/scripts/agent_growth.py report`
-
-**Events not logging:**
-- Check skill is loaded: `hermes skills list | grep agent-growth`
-- Check script exists: `ls ~/.hermes/scripts/agent_growth.py`
-
-**Sync not working:**
-- Run `report` first to verify events exist
-- Only verified + high-confidence entries sync
-
-> VN: Nếu install fail, check Python 3 và Hermes trước. Nếu sync không hoạt động, chạy report kiểm tra.
-
----
-
-## FAQ
-
-**Is this only for Hermes?**
-The CLI helper works with any agent that can run shell commands. The skill file is Hermes-specific.
-
-**Does it overwrite my memory?**
-No. It only appends to `events.jsonl` and generates `AGENT_GROWTH.md`. Existing files in `USER.md`, `MEMORY.md` are not modified by the learning loop.
-
-**Can I uninstall safely?**
-Yes. Remove these files:
-```bash
-rm -rf ~/.hermes/memories/agent_growth
-rm ~/.hermes/memories/AGENT_GROWTH.md
-rm ~/.hermes/scripts/agent_growth.py
-rm -rf ~/.hermes/skills/autonomous-ai-agents/agent-growth-protocol
-```
-
-**What about privacy?**
-All data stays local in `~/.hermes/`. No external API calls. No telemetry.
-
-> VN: Mọi dữ liệu đều cục bộ. Không gọi API ngoài. An toàn.
+**Rules:**
+- Only verified, reusable, high-value learnings enter long-term memory
+- Topic prefixes: `hermes-config:`, `tool:`, `workflow:`, `project:`
+- Promotion gate: `seen >= 3` + `confidence >= 0.8` + verified
 
 ---
 
 ## Origin
 
-Adapted from [AI Persona OS](https://clawhub.ai/jeffjhunter/ai-persona-os), focused on operational learning and memory for Hermes agents.
+Adapted from [AI Persona OS](https://clawhub.ai/jeffjhunter/ai-persona-os), narrowed for practical agent learning.
 
 ## License
 
