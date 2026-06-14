@@ -1,0 +1,315 @@
+profile:
+  name: unified-hermes-v2
+  mission: "One Hermes profile with OMO-style agent depth, category routing, plan-first execution, and session continuity."
+
+model:
+  api_mode: responses
+  default: gpt-5.4
+  provider: local-gemma
+  reasoning_effort: high
+  verbose: false
+  routing:
+    visual-engineering: gemma-4-26b-a4b-qat
+    ultrabrain: gpt-5.5
+    deep: gpt-5.5-codex
+    artistry: kimi-k2.6
+    quick: gpt-5.4-mini
+    unspecified-low: claude-sonnet-4-5
+    unspecified-high: claude-opus-4-5
+    writing: gpt-5.4-mini
+
+providers:
+  openai-codex:
+    name: OpenAI Codex
+    default_model: gpt-5.4
+    api_mode: responses
+  anthropic:
+    name: Anthropic
+    default_model: claude-sonnet-4-5
+    api_mode: responses
+  local-gemma:
+    name: Local Gemma 4
+    api_mode: chat_completions
+    base_url: http://127.0.0.1:1234/v1
+    default_model: gemma-4-26b-a4b-qat
+    discover_models: true
+  fast-pool:
+    name: Fast pool
+    default_model: qwen3.6-plus
+    api_mode: responses
+
+fallback_providers:
+  - anthropic
+  - fast-pool
+  - local-gemma
+
+credential_pool_strategies:
+  opencode-go: fill_first
+
+toolsets:
+  - hermes-cli
+
+max_concurrent_sessions: 3
+
+agent:
+  max_turns: 90
+  gateway_timeout: 1800
+  restart_drain_timeout: 180
+  api_max_retries: 3
+  service_tier: ""
+  tool_use_enforcement: auto
+  task_completion_guidance: true
+  environment_probe: true
+  environment_hint: ""
+  coding_context: auto
+  gateway_timeout_warning: 900
+  clarify_timeout: 600
+  gateway_notify_interval: 180
+  gateway_auto_continue_freshness: 3600
+  image_input_mode: auto
+  disabled_toolsets: []
+  personalities:
+    concise: "Be brief and direct."
+    helpful: "Be accurate, practical, and action-oriented."
+    technical: "Give exact technical details and verification steps."
+    vinhlam_exec: |
+      You are Vinh Lam's execution-first partner.
+      Prioritize usable output: decisions, checklists, templates, and exact next steps.
+      Use process-first routing, verification before completion, and explicit lane splits.
+      Do not claim completion without proof.
+  reasoning_effort: high
+  verbose: false
+
+terminal:
+  backend: local
+  modal_mode: auto
+  cwd: .
+  timeout: 180
+  persistent_shell: true
+  lifetime_seconds: 300
+  container_cpu: 2
+  container_memory: 6144
+  container_disk: 51200
+
+web:
+  backend: ddgs
+  use_gateway: false
+
+browser:
+  inactivity_timeout: 120
+  command_timeout: 30
+  record_sessions: false
+  allow_private_urls: false
+  engine: auto
+  auto_local_for_private_urls: true
+  dialog_policy: must_respond
+  dialog_timeout_s: 300
+  cloud_provider: local
+  use_gateway: false
+
+compression:
+  enabled: true
+  threshold: 0.3
+  target_ratio: 0.2
+  protect_last_n: 20
+  protect_first_n: 3
+  hygiene_hard_message_limit: 400
+  abort_on_summary_failure: false
+
+prompt_caching:
+  cache_ttl: 15m
+
+auxiliary:
+  vision:
+    provider: local-gemma
+    model: gemma-4-26b-a4b-qat
+    timeout: 120
+  web_extract:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 360
+  compression:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 120
+  mcp:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 30
+  title_generation:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 30
+  triage_specifier:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 120
+  profile_describer:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 60
+  curator:
+    provider: local-gemma
+    model: gpt-5.4-mini
+    timeout: 600
+
+routing:
+  max_worker_lanes: 4
+  max_background_jobs: 4
+  default_verifier: Momus
+  default_orchestrator: Atlas
+  session_id_reuse: true
+  no_google_models: true
+  plan_required_for:
+    - multi_file_mutation
+    - multi_page_workspace_edit
+    - destructive_ops
+    - ">5_writes"
+    - ">3_independent_records"
+
+skills:
+  external_dirs:
+    - /Users/vinhlamphuoc/.hermes/profiles/unified/skills
+  template_vars: true
+  inline_shell: false
+  inline_shell_timeout: 10
+  guard_agent_created: false
+  write_approval: false
+  creation_nudge_interval: 15
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: false
+  memory_char_limit: 8000
+  user_char_limit: 2500
+  provider: mnemosyne
+  flush_min_turns: 6
+  nudge_interval: 10
+
+delegation:
+  provider: local-gemma
+  model: gpt-5.4-mini
+  inherit_mcp_toolsets: true
+  max_iterations: 50
+  child_timeout_seconds: 600
+  max_concurrent_children: 4
+  max_spawn_depth: 1
+  orchestrator_enabled: true
+  subagent_auto_approve: false
+  category_routes:
+    visual-engineering:
+      model: gemma-4-26b-a4b-qat
+      provider: local-gemma
+      lane: creative
+      fallback_models:
+        - qwen3.6-plus
+        - gpt-5.4-mini
+    ultrabrain:
+      model: gpt-5.5
+      provider: local-gemma
+      lane: review
+      fallback_models:
+        - claude-opus-4-5
+        - gpt-5.4
+    deep:
+      model: gpt-5.5-codex
+      provider: local-gemma
+      lane: code
+      fallback_models:
+        - kimi-k2.6
+        - gpt-5.4
+    artistry:
+      model: kimi-k2.6
+      provider: fast-pool
+      lane: creative
+      fallback_models:
+        - claude-opus-4-5
+        - gpt-5.4-mini
+    quick:
+      model: gpt-5.4-mini
+      provider: local-gemma
+      lane: default
+      fallback_models:
+        - qwen3.6-plus
+        - deepseek-v4-flash
+    unspecified-low:
+      model: claude-sonnet-4-5
+      provider: anthropic
+      lane: default
+      fallback_models:
+        - gpt-5.4-mini
+        - qwen3.6-plus
+    unspecified-high:
+      model: claude-opus-4-5
+      provider: anthropic
+      lane: review
+      fallback_models:
+        - gpt-5.5
+        - gpt-5.4
+    writing:
+      model: gpt-5.4-mini
+      provider: local-gemma
+      lane: writing
+      fallback_models:
+        - deepseek-v4-flash
+        - claude-haiku-4-5
+
+hooks:
+  enabled:
+    - todo-continuation-enforcer
+    - context-window-monitor
+    - session-recovery
+    - comment-checker
+    - grep-output-truncator
+    - tool-output-truncator
+    - directory-agents-injector
+    - empty-task-response-detector
+    - think-mode
+    - ralph-loop
+    - preemptive-compaction
+    - delegate-task-retry
+    - atlas
+    - start-work
+    - ulw-trigger
+    - plan-gate
+    - verification-before-completion
+    - process-first-routing
+    - lane-budget-enforcer
+    - provider-ban-enforcer
+    - research-fanout
+    - background-job-monitor
+    - long-run-notify
+    - read-only-guard
+    - file-mutation-guard
+    - bulk-write-splitter
+    - notion-bulk-op-guard
+    - browser-safety-guard
+    - vision-router
+    - skill-pack-loader
+    - model-override-resolver
+    - plan-promotion-hook
+    - memory-promotion-hook
+    - cron-report-hook
+    - cleanup-on-close
+
+cron:
+  jobs:
+    - name: daily-summary
+      schedule: "0 9 * * *"
+      prompt: "Summarize active sessions, unresolved blockers, and candidate learnings. Keep under 10 bullets."
+    - name: weekly-compaction
+      schedule: "0 9 * * 1"
+      prompt: "Compact session memory, promote verified reusable learnings, and flag stale lanes."
+
+display:
+  compact: false
+  personality: vinhlam_exec
+  resume_display: full
+  resume_exchanges: 10
+  resume_max_user_chars: 300
+  resume_max_assistant_chars: 200
+  resume_max_assistant_lines: 3
+  resume_skip_tool_only: true
+  busy_input_mode: interrupt
+  interface: cli
