@@ -213,9 +213,39 @@ Rollback must be reversible at every phase.
 
 ---
 
+## Added: Knowledge & Orchestration Infrastructure
+
+### GBrain + OneBrain (Knowledge Layer)
+- **GBrain**: Local brain with PGLite, LM Studio embeddings, semantic search
+- **OneBrain**: Obsidian vault wrapper for GBrain
+- **Lane**: core (always-loaded knowledge infrastructure)
+- **Dependencies**: LM Studio at http://127.0.0.1:1234, GBrain server at port 3131
+- **Integration**: GBrain MCP in Hermes config, vault at ~/Obsidian/BrainVault
+
+### oh-my-opencode (OMO) Adaptation
+- **OMO**: Multi-agent orchestration (12 agents, 8 categories, 34 hooks)
+- **Adapted to**: Hermes unified profile with category-based routing
+- **Lane**: core (orchestration policy)
+- **Key features**: Ultrawork, Prometheus, 34 hooks, session continuity
+
+### Updated Core Lane (now 6 skills)
+1. hermes-agent
+2. local-subagent-routing
+3. process-first-routing
+4. native-mcp
+5. gbrain-onebrain (knowledge infrastructure)
+6. oh-my-opencode-hermes-adaptation (orchestration policy)
+
+### Updated Total Count
+- Core production: **20 skills** (was 18)
+- Personal utilities: kept
+- Retired: gaming, social media, smart home, novelty
+
+---
+
 ## Final recommendation
 Adopt the lean unified profile with:
-- **18 core production skills**
+- **20 core production skills**
 - **personal utilities retained on demand**
 - **gaming / social / smart-home / novelty retired**
 
