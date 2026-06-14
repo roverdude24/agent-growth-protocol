@@ -4,15 +4,42 @@ A lightweight system for agent self-improvement. Three loops that run alongside 
 
 Most AI agents forget everything between sessions. They repeat the same mistakes, burn credits fixing solved problems, and never get better at what they do. This protocol fixes that with three simple loops: learn from errors, track growth, and never lose context.
 
-## What It Does
-
-| Loop | Purpose | Where It Lives |
-|------|---------|----------------|
-| **Learning** | Turn errors into permanent knowledge | MEMORY.md |
-| **Growth** | Track new capabilities as they emerge | MEMORY.md |
-| **Never-Forget** | Checkpoint context before it's lost | Mnemosyne (ephemeral) |
-
 ## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    AGENT WORK SESSION                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐             │
+│  │  ERROR   │    │ NEW SKILL│    │ LONG TASK│             │
+│  │ occurred │    │ acquired │    │ starting │             │
+│     └──┬─────┘    └────┬─────┘    └────┬─────┘             │
+│        │               │               │                    │
+│        ▼               ▼               ▼                    │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐             │
+│  │  LOOP 1  │    │  LOOP 2  │    │  LOOP 3  │             │
+│  │ Learning │    │  Growth  │    │Checkpoint│             │
+│  └────┬─────┘    └────┬─────┘    └────┬─────┘             │
+│       │               │               │                    │
+│       ▼               ▼               ▼                    │
+│  ┌─────────────────────────────────────────┐              │
+│  │              MEMORY.md                  │              │
+│  │  [LRN-001] error → cause → fix         │              │
+│  │  [GROW-001] can now do X               │              │
+│  └─────────────────────────────────────────┘              │
+│       │                                                    │
+│       ▼  (3+ recurring)                                    │
+│  ┌─────────────────────────────────────────┐              │
+│  │              USER.md                    │              │
+│  │  [LRN-PROMOTED] permanent rule          │              │
+│  └─────────────────────────────────────────┘              │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  MNEMOSYNE (ephemeral)                                     │
+│  [CHECKPOINT] task state → auto-prune 48h                  │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ### Loop 1: Learning (Error → Asset)
 
@@ -52,41 +79,105 @@ When context hits 70% or you're about to start a long task, flush critical state
 
 On session start, read your last 3 checkpoints to resume where you left off.
 
-## Setup
+## Installation
 
-### Option 1: Manual
+### Step 1: Copy Skill to Hermes
 
-Add this section to your MEMORY.md:
+```bash
+# Clone the repo
+git clone https://github.com/roverdude24/agent-growth-protocol.git
+
+# Copy skill to Hermes
+cp -r agent-growth-protocol/SKILL.md ~/.hermes/skills/autonomous-ai-agents/agent-growth-protocol/
+
+# Verify installation
+hermes skills list | grep growth
+```
+
+### Step 2: Add Learnings Section to MEMORY.md
+
+```bash
+# Open your MEMORY.md
+open ~/.hermes/memories/MEMORY.md
+
+# Add these sections at the end:
+```
 
 ```markdown
+§
 ## Learnings
 
 ## Growth
 ```
 
-Start logging. That's it.
+### Step 3: Configure Mnemosyne Integration
 
-### Option 2: With Cron (Morning Briefing)
+Mnemosyne dashboard must be running for checkpoint storage:
 
-Add to your existing morning briefing cron:
+```bash
+# Check if Mnemosyne is running
+curl -s http://127.0.0.1:8765/api/auth/status
 
+# If not running, start it
+hermes mnemosyne start
 ```
+
+### Step 4: (Optional) Add to Morning Briefing Cron
+
+```bash
+# Add to your existing morning briefing cron prompt:
 1. Read MEMORY.md, count [LRN] entries by topic
 2. If any topic has 3+ entries → flag for promotion to USER.md
 3. Report: "Active learnings: N. Growth events: M. Promotions pending: [list]"
 ```
 
-### Option 3: Hermes Skill
+## Integration with Mnemosyne
 
-Copy `SKILL.md` to `~/.hermes/skills/autonomous-ai-agents/agent-growth-protocol/`. The agent will self-trigger on errors and session boundaries.
+### How It Works
 
-## Storage
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    STORAGE LAYERS                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  PERMANENT (MEMORY.md)          EPHEMERAL (Mnemosyne)      │
+│  ┌─────────────────────┐       ┌─────────────────────┐    │
+│  │ [LRN-001] ...       │       │ [CHECKPOINT] ...    │    │
+│  │ [LRN-002] ...       │       │ [CHECKPOINT] ...    │    │
+│  │ [GROW-001] ...      │       │                     │    │
+│  │                     │       │ Auto-prune: 48h     │    │
+│  │ Manual edit only    │       │ API: read-only      │    │
+│  └─────────────────────┘       └─────────────────────┘    │
+│           │                               │                 │
+│           ▼                               ▼                 │
+│  ┌─────────────────────┐       ┌─────────────────────┐    │
+│  │ USER.md (promoted)  │       │ Dashboard: view     │    │
+│  │ POLICY.md (rules)   │       │ Search: recall      │    │
+│  └─────────────────────┘       └─────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-| Loop | Location | Format | Retention |
-|------|----------|--------|-----------|
-| Learning | MEMORY.md | `[LRN] what → cause → fix` | Permanent |
-| Growth | MEMORY.md | `[GROW] capability → source` | Permanent |
-| Checkpoint | Mnemosyne | `[CHECKPOINT] task decisions blockers` | 48h |
+### Storage Locations
+
+| Loop | Location | Format | Retention | Access |
+|------|----------|--------|-----------|--------|
+| Learning | MEMORY.md | `[LRN] what → cause → fix` | Permanent | Manual edit |
+| Growth | MEMORY.md | `[GROW] capability → source` | Permanent | Manual edit |
+| Checkpoint | Mnemosyne | `[CHECKPOINT] task decisions blockers` | 48h | API read-only |
+| Promoted | USER.md | `[LRN-PROMOTED] rule` | Permanent | Manual edit |
+
+### Recall Patterns
+
+1. **Session start:** Read MEMORY.md for recent `[LRN]` and `[GROW]` entries
+2. **On error:** Search MEMORY.md for similar `[LRN]` entries before fixing
+3. **Weekly:** Count `[LRN]` entries, promote 3+ count patterns to USER.md
+4. **Checkpoint resume:** Query Mnemosyne API for recent checkpoints
+
+```bash
+# Query Mnemosyne for recent checkpoints
+curl -s http://127.0.0.1:8765/api/memories | jq '.items[] | select(.content | contains("CHECKPOINT"))'
+```
 
 ## Manual Triggers
 
