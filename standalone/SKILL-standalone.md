@@ -1,6 +1,6 @@
 ---
 name: agent-growth-protocol
-description: "Instrumented learning pipeline for Hermes agents: JSONL event store, generated report, Mnemosyne sync fallback, verification, compaction, and promotion routing."
+description: "Instrumented learning pipeline for standalone agents: SQLite database, generated report, verification, compaction, and recall."
 version: 0.3.1
 author: Vinh Lam
 license: MIT
@@ -15,20 +15,18 @@ This is not a persona system. This is an agent learning pipeline:
 
 ```text
 tool error / correction / workaround
-  → structured event in events.jsonl
-  → generated AGENT_GROWTH.md report
+  → structured event in SQLite database
+  → generated report.md report
   → verify reuse and success
   → compact duplicates / stale entries
-  → sync verified high-value rules into long-term memory
-  → promote stable rules into skills, POLICY.md, or USER.md only when appropriate
-```
+  → recall / session-start to load learnings
 
 ## Core Files
 
 ```text
-~/.hermes/memories/agent_growth/events.jsonl   # source of truth
-~/.hermes/memories/AGENT_GROWTH.md            # generated human report
-~/.hermes/scripts/agent_growth.py             # automation helper
+~/.agent_growth/growth.db                     # SQLite database (source of truth)
+~/.agent_growth/report.md                     # generated human report
+~/.agent_growth/bin/agent_growth.py           # automation helper
 ```
 
 Do not use `USER.md` or main `MEMORY.md` as the raw learning store.
@@ -49,8 +47,8 @@ Never claim full automation unless script/cron/hooks are installed and tested.
 ### Learning
 
 ```bash
-python3 ~/.hermes/scripts/agent_growth.py add-learning \
-  --topic hermes-config \
+python3 ~/.agent_growth/bin/agent_growth.py add-learning \
+  --topic tool-config \
   --impact high \
   --problem 'Root config write-protected from patch' \
   --fix 'Use hermes config set for root config edits'
@@ -59,8 +57,8 @@ python3 ~/.hermes/scripts/agent_growth.py add-learning \
 ### Growth
 
 ```bash
-python3 ~/.hermes/scripts/agent_growth.py add-growth \
-  --topic hermes \
+python3 ~/.agent_growth/bin/agent_growth.py add-growth \
+  --topic database \
   --capability 'Can audit and patch multi-profile config' \
   --evidence 'Fixed default/review-board/creative/executive profile MCP surfaces'
 ```
@@ -68,7 +66,7 @@ python3 ~/.hermes/scripts/agent_growth.py add-growth \
 ### Checkpoint
 
 ```bash
-python3 ~/.hermes/scripts/agent_growth.py checkpoint \
+python3 ~/.agent_growth/bin/agent_growth.py checkpoint \
   --task 'long task name' \
   --decisions 'key decisions' \
   --blockers 'current blockers' \
@@ -78,7 +76,7 @@ python3 ~/.hermes/scripts/agent_growth.py checkpoint \
 ### Verify
 
 ```bash
-python3 ~/.hermes/scripts/agent_growth.py verify \
+python3 ~/.agent_growth/bin/agent_growth.py verify \
   --id LRN-001 \
   --evidence 'Applied fix successfully in later session'
 ```
@@ -86,37 +84,13 @@ python3 ~/.hermes/scripts/agent_growth.py verify \
 ### Report / Render / Compact / Sync
 
 ```bash
-python3 ~/.hermes/scripts/agent_growth.py report
-python3 ~/.hermes/scripts/agent_growth.py render-md
-python3 ~/.hermes/scripts/agent_growth.py compact
-python3 ~/.hermes/scripts/agent_growth.py sync-mnemosyne
+python3 ~/.agent_growth/bin/agent_growth.py report
+python3 ~/.agent_growth/bin/agent_growth.py render-md
+python3 ~/.agent_growth/bin/agent_growth.py compact
+python3 ~/.agent_growth/bin/agent_growth.py session-start
+python3 ~/.agent_growth/bin/agent_growth.py recall --topic tool
 ```
 
-## Mnemosyne Sync Rule
-
-Sync only high-value memories into long-term recall.
-
-Sync if:
-- learning is `status=verified`
-- confidence >= 0.8 OR impact=high
-- rule is reusable across future sessions
-
-Do not sync:
-- one-off command typos
-- transient network/API errors
-- user preferences (those belong in USER.md)
-- raw checkpoints unless needed for active task recovery
-
-Current implementation:
-- If direct Mnemosyne write API is unavailable, `sync-mnemosyne` writes a compact `## Agent Growth Sync` block into `MEMORY.md`.
-- Hermes/Mnemosyne can then ingest/recall that durable memory.
-
-Memory format:
-
-```text
-[AGENT_LEARNING] hermes-config: Root config write-protected → use hermes config set
-[AGENT_CAPABILITY] hermes: Can audit multi-profile Hermes configs — evidence: profile audit fixed
-```
 
 ## Promotion Rules
 
@@ -144,13 +118,13 @@ Do not promote unverified learnings.
 Daily:
 
 ```text
-Run `python3 ~/.hermes/scripts/agent_growth.py report`. Summarize open learnings, verified learnings, growth events, and promotion candidates in under 10 bullets.
+Run `python3 ~/.agent_growth/bin/agent_growth.py report`. Summarize open learnings, verified learnings, growth events, and promotion candidates in under 10 bullets.
 ```
 
 Weekly:
 
 ```text
-Run compact → promotions → sync-mnemosyne. Ask user before editing USER.md, POLICY.md, or skills.
+Run compact → promotions. Ask user before editing USER.md, POLICY.md, or skills.
 ```
 
 ## Agent Behavior Rules
@@ -176,7 +150,7 @@ User can trigger with one word. Agent interprets and runs script.
 | `/agp-checkpoint` | Save checkpoint |
 | `/agp-report` | Show report |
 | `/agp-compact` | Compact stale entries |
-| `/agp-sync` | Sync to long-term memory |
+| `/agp-session` | Show session-start |
 
 ## Auto-Trigger Table
 
@@ -194,27 +168,27 @@ User can trigger with one word. Agent interprets and runs script.
 
 ```bash
 # After tool error
-python3 ~/.hermes/scripts/agent_growth.py add-learning \
+python3 ~/.agent_growth/bin/agent_growth.py add-learning \
   --topic "<topic>" \
   --impact "<low|medium|high>" \
   --problem "<what went wrong>" \
   --fix "<what fixed it>"
 
 # After new capability
-python3 ~/.hermes/scripts/agent_growth.py add-growth \
+python3 ~/.agent_growth/bin/agent_growth.py add-growth \
   --topic "<domain>" \
   --capability "<what agent can now do>" \
   --evidence "<proof>"
 
 # Before long task
-python3 ~/.hermes/scripts/agent_growth.py checkpoint \
+python3 ~/.agent_growth/bin/agent_growth.py checkpoint \
   --task "<task name>" \
   --decisions "<key decisions>" \
   --blockers "<blockers>" \
   --next "<next action>"
 
 # After reusing a fix
-python3 ~/.hermes/scripts/agent_growth.py verify \
+python3 ~/.agent_growth/bin/agent_growth.py verify \
   --id "<LRN-NNN>" \
   --evidence "<proof it worked>"
 ```
@@ -233,13 +207,12 @@ project:<project-name>      — project-specific learnings
 
 ## Pitfalls
 
-- JSONL is source of truth; markdown report is generated.
+- SQLite is source of truth; markdown report is generated.
 - Use `python3`, not `python`, on macOS.
 - Keep `USER.md` for user preferences, not tool tactics.
-- Keep `MEMORY.md` lean; sync only compact verified items.
+- Keep `report.md` lean; sync only compact verified items.
 - Shell hook integration remains future work until tested.
 - Public README must avoid local `file://` links and avoid claiming fake automation.
-- `mnemosyne_remember` tool does not exist in Hermes. Use `mnemosyne_dashboard_*` for status only. Write via `agent_growth.py` or direct file edits.
 - When using `install.sh`, always push repo changes FIRST before running the script — remote clone may pull old version.
 - For creative writing (README, captions), use two-pass pipeline: agy drafts → GPT-5.5 reviews/rewrites → parent polishes. agy is strong at structure, GPT-5.5 at copy quality.
 

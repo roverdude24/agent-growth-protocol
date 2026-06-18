@@ -1,115 +1,124 @@
-# Agent Growth Protocol (AGP)
+# Agent Growth Protocol (AGP) 📈
 
-**Turn repeated agent mistakes into verified rules. Works with or without Hermes.**
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-blue.svg)](https://github.com/roverdude24/agent-growth-protocol)
+[![Platform: Cross-Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen.svg)](#)
 
-> Biến lỗi lặp lại thành bài học đã kiểm chứng. Dùng được với mọi agent.
+> **Turn repeated AI agent mistakes into verified, permanent rules. Keep your agent memories clean, lightweight, and actually useful.**
+> 
+> *Biến lỗi lặp lại của AI Agent thành bài học đã kiểm chứng. Giúp bộ nhớ của Agent luôn sạch sẽ, tối ưu và thông minh hơn sau mỗi phiên làm việc.*
 
----
-
-## Two paths
-
-| Path | For | What it ships |
-|------|-----|--------------|
-| **[Standalone](standalone/)** | Any agent (Codex, Antigravity, OpenCode, etc.) | SQLite database + CLI helper + SKILL.md |
-| **[Hermes-native](hermes/)** | Hermes Agent only | Thin policy SKILL.md (~500 tokens), uses Hermes built-ins |
-
-**Not sure?** Start with Standalone — it works everywhere.
-
-> VN: Bắt đầu với Standalone nếu chưa chắc — dùng được với mọi agent.
+🇻🇳 **Dành cho người dùng Việt Nam:** Đọc tài liệu chi tiết và dễ hiểu cho dân không chuyên (Non-tech) tại đây: [**GUIDE_NOTECH.md**](GUIDE_NOTECH.md).
 
 ---
 
-## Standalone (v0.3.2)
+## ⚡ Quick Start: Choose Your Path
 
-For agents without built-in memory. Includes its own SQLite memory system.
+AGP is designed to support different workflows. Choose the path that fits your setup:
+
+```mermaid
+graph TD
+    Start([Which Agent setup are you using?]) --> |Any CLI/IDE Agent <br> Cursor, Aider, Claude CLI, OpenCode, etc.| PathA[Standalone v0.3.2]
+    Start --> |Hermes Ecosystem| PathB[Hermes-Native v0.4.0]
+    
+    PathA --> RunA["`**Run Installer:**
+    curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/standalone/install.sh | bash`"]
+    PathB --> RunB["`**Run Installer:**
+    curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/install-hermes.sh | bash`"]
+```
+
+---
+
+## ⚔️ Comparison: Standalone vs. Hermes-Native
+
+| Feature | Standalone (v0.3.2) 🔌 | Hermes-Native (v0.4.0) 🪶 |
+| :--- | :--- | :--- |
+| **Target Agent** | **Any Agent** (Cursor, Aider, Claude Code, Antigravity) | Hermes Agent Only |
+| **Database** | Local SQLite (`~/.agent_growth/growth.db`) | None (Uses Hermes Memory/Mnemosyne) |
+| **Automation** | Explicit CLI / Semi-automated | Fully automated via Hermes Hooks |
+| **Setup Cost** | Medium (Requires Python 3) | Zero (Markdown policy configuration only) |
+| **Best For** | IDE-based local development & Multi-agent setups | Deep Hermes-only integrations |
+
+---
+
+## 🗺️ System Architecture
+
+### 1. Standalone Pathway (Local SQLite + CLI Tooling)
+Works by maintaining a local SQLite database that stores agent interactions, error logs, and verification states.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Agent as AI Agent (Cursor/Aider)
+    participant CLI as AGP CLI (~/.agent_growth/)
+    participant DB as SQLite DB (growth.db)
+    participant MD as Human Report (report.md)
+
+    Agent->>CLI: agent_growth.py add-learning (Problem -> Fix)
+    CLI->>DB: Insert Raw Learning (Status: pending)
+    Note over Agent, DB: ... Later in another session ...
+    Agent->>CLI: agent_growth.py verify --id LRN-001
+    CLI->>DB: Update Status to Verified & Increment Counter
+    CLI->>MD: Regenerate report.md (Human Readable)
+```
+
+### 2. Hermes-Native Pathway (Zero-Infrastructure)
+A pure markdown policy shim leveraging Hermes hooks, native memory databases, and cron.
+
+```mermaid
+graph LR
+    subgraph Hermes Runtime
+        Hook[Hooks: post_tool_call] -->|Auto-capture errors| Mem[(Hermes Memory)]
+        Cron[Cron Job] -->|Daily Compile| Report[AGENT_GROWTH.md]
+        Promote[skill_manage] -->|seen >= 3 + verified| Core[Promoted Skills / POLICY.md]
+    end
+```
+
+---
+
+## ⚙️ The Promotion Gate
+
+Not every single error is worth remembering forever. AGP acts as a noise filter:
+
+$$\text{Promotion} = (\text{Status} == \text{Verified}) \land (\text{Seen} \ge 3) \land (\text{Confidence} \ge 0.8)$$
+
+1. **Capture:** Raw errors/workarounds are logged locally.
+2. **Verify:** Prove the fix works in a subsequent session (evidence required).
+3. **Promote:** Move to permanent system prompt (`POLICY.md`), user configuration (`USER.md`), or a dedicated Hermes Skill (`skill_manage`).
+
+---
+
+## 🛠️ Detailed Setup
+
+### Path A: Standalone Mode (Recommended)
+Suitable for Cursor, Aider, and local CLI agents.
 
 ```bash
+# 1. Install
 curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/standalone/install.sh | bash
-```
 
-What you get:
-- SQLite database: `~/.agent_growth/growth.db`
-- Human-readable report: `~/.agent_growth/report.md`
-- CLI helper: `~/.agent_growth/bin/agent_growth.py`
-- Session-aware recall: `session-start` prints relevant prior learnings
-
-Commands:
-```bash
+# 2. Commands (executed by the Agent or you)
+agent_growth.py init                         # Initialize database and report
 agent_growth.py add-learning --topic tool:x --problem "..." --fix "..."
-agent_growth.py add-growth --topic workflow:y --capability "..." --evidence "..."
 agent_growth.py verify --id LRN-001 --evidence "..."
-agent_growth.py session-start    # prints relevant learnings for new session
-agent_growth.py recall --topic tool
-agent_growth.py report
+agent_growth.py session-start                # Recalls relevant prior learnings
+agent_growth.py report                       # View stats
 ```
 
-> VN: SQLite database chạy local, nhanh, không phụ thuộc external service.
+For detailed standalone skill policies, see [**standalone/SKILL-standalone.md**](standalone/SKILL-standalone.md).
 
-Details: [standalone/](standalone/)
-
----
-
-## Hermes-native (v0.4)
-
-For Hermes Agent. No standalone infrastructure — uses Hermes hooks, memory, and cron.
+### Path B: Hermes-Native Mode
+No python script, no sqlite database. Pure policy.
 
 ```bash
+# 1. Install
 curl -fsSL https://raw.githubusercontent.com/roverdude24/agent-growth-protocol/main/install-hermes.sh | bash
 ```
 
-What you get:
-- Thin policy SKILL.md (~500 tokens)
-- Uses Hermes hooks for auto-capture
-- Uses Hermes memory for storage
-- Uses Hermes cron for reporting
-- No scripts, no databases
-
-Details: [hermes/](hermes/)
+For detailed policy rules, see [**hermes/SKILL.md**](hermes/SKILL.md).
 
 ---
 
-## Which should I choose?
+## 📝 License
 
-| | Standalone | Hermes-native |
-|---|---|---|
-| **Agent** | Any | Hermes only |
-| **Memory** | SQLite (own database) | Hermes built-in |
-| **Setup** | Python 3 + script | Just SKILL.md |
-| **Auto-capture** | CLI + cron | Hooks + cron |
-| **Best for** | Multi-agent setups | Hermes-only setups |
-
-**Choose Standalone** if you use multiple agents or want portable memory.
-**Choose Hermes-native** if you're all-in on Hermes and want zero extra infra.
-
-> VN: Standalone = mọi agent, SQLite riêng. Hermes-native = chỉ Hermes, dùng sẵn memory.
-
----
-
-## How it works
-
-```
-Error / Correction / New workflow
-        ↓
-    Capture lesson
-        ↓
-    Verify: did this fix work?
-        ↓
-    Worth keeping?
-        ├── No  → keep local
-        └── Yes → promote to long-term memory
-```
-
-**Rules:**
-- Only verified, reusable, high-value learnings enter long-term memory
-- Topic prefixes: `hermes-config:`, `tool:`, `workflow:`, `project:`
-- Promotion gate: `seen >= 3` + `confidence >= 0.8` + verified
-
----
-
-## Origin
-
-Adapted from [AI Persona OS](https://clawhub.ai/jeffjhunter/ai-persona-os), narrowed for practical agent learning.
-
-## License
-
-MIT
+Distributed under the MIT License. See `LICENSE` for more information.
